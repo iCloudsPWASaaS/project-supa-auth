@@ -32,7 +32,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS users_email_key ON users (lower(email));
 
 -- Demo admin, matching DEMO_ADMIN_EMAIL / DEMO_ADMIN_PASSWORD in .env.example.
 --
--- The password is a bcrypt hash (cost 10) of "kR7mq2Xp9vT4". It is stored as a
+-- The password is a bcrypt hash (cost 10) of "123456". It is stored as a
 -- literal rather than computed with pgcrypto's crypt() so this file needs no
 -- extension installed and produces the same row on every database.
 --
@@ -40,8 +40,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS users_email_key ON users (lower(email));
 -- inside the app, re-provisioning must not silently reset it.
 INSERT INTO users (email, password, "firstName", "lastName", role)
 VALUES (
-  'demo@weblify.app',
-  '$2a$10$3xI4o5al3jc4oi/K4f03p.3tYUZZSDEdf3IMR5oaULQCdOdZyh2ju',
+  'demo@iclouds.co.uk',
+  '$2a$10$XOdJx7DVqCLtnSbn4P0St.IBbkvQrKlKxbWDU6rfAgwpBXWlfaiE2',
   'Admin',
   'User',
   'admin'
