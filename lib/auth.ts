@@ -1,5 +1,7 @@
-import { supabase } from "@/lib/supabase";
-
+// Schema-backed auth — talks to the local API routes (app/api/auth/*), which read
+// the app's own `users` table (Postgres schema app_<appId>) through PostgREST.
+// The pages are identical to project-mongo's; only the storage behind the routes
+// differs.
 export type AuthUser = {
   id: string;
   email: string;
@@ -10,42 +12,51 @@ export type AuthUser = {
   avatar?: string | null;
 };
 
-// Supabase-backed auth. The Mongo project variant (project-mongo/) is a fully
-// separate template with its own lib/auth.ts calling the local API routes —
-// the pages are identical, but nothing here is shared.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const toUser = (u: any): AuthUser => ({
+  id: u?.id || "",
+  email: u?.email || "",
+  firstName: u?.firstName || null,
+  lastName: u?.lastName || null,
+  phone: u?.phone || null,
+  role: u?.role || "tenant",
+  avatar: u?.avatar || null,
+});
+
+async function post(url: string, body: unknown) {
+  const res = await fetch(url, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
 export async function getCurrentUser(): Promise<AuthUser | null> {
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
-  if (!user) return null;
-  return {
-    id: user.id,
-    email: user.email || "",
-    firstName: user.user_metadata?.firstName || null,
-    lastName: user.user_metadata?.lastName || null,
-    phone: user.user_metadata?.phone || null,
-    role: user.user_metadata?.role || "tenant",
-    avatar: user.user_metadata?.avatar || null,
-  };
+  const res = await fetch("/api/auth/me", { credentials: "same-origin" });
+  if (!res.ok) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data: any = await res.json();
+  return data.user ? toUser(data.user) : null;
 }
 
 export async function signup(input: { firstName: string; lastName: string; email: string; password: string }) {
-  const { error } = await supabase.auth.signUp({
-    email: input.email,
-    password: input.password,
-    options: { data: { firstName: input.firstName, lastName: input.lastName, role: "tenant" } },
-  });
-  if (error) return { ok: false as const, error: error.message };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data: any = await post("/api/auth/signup", input);
+  if (!data.ok) return { ok: false as const, error: data.error || "Signup failed." };
   return { ok: true as const };
 }
 
 export async function login(email: string, password: string) {
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { ok: false as const, error: error.message };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data: any = await post("/api/auth/login", { email, password });
+  if (!data.ok) return { ok: false as const, error: data.error || "Unable to log in." };
   return { ok: true as const };
 }
 
 export async function logout() {
-  await supabase.auth.signOut();
+  await post("/api/auth/logout", {});
 }
 
 export async function getProfile(): Promise<AuthUser | null> {
@@ -53,7 +64,14 @@ export async function getProfile(): Promise<AuthUser | null> {
 }
 
 export async function updateProfile(data: { firstName?: string; lastName?: string; phone?: string; avatar?: string }) {
-  const { error } = await supabase.auth.updateUser({ data });
-  if (error) return { ok: false as const, error: error.message };
+  const res = await fetch("/api/user/profile", {
+    method: "PUT",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result: any = await res.json();
+  if (!result.ok) return { ok: false as const, error: result.error || "Could not save profile." };
   return { ok: true as const };
 }
